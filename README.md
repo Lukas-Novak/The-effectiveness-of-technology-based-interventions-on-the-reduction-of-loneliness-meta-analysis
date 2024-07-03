@@ -14,11 +14,18 @@ The equations used in this analysis were obtained from [Matthew B. Jane's blog p
 
 ## Equations
 
+
 1. **Standard Deviation of Change Scores**:
-\[ S_{\text{change}} = \frac{M_{\text{change}} \cdot \sqrt{N}}{t} \]
+   \[
+   S_{\text{change}} = \frac{M_{\text{change}} \cdot \sqrt{N}}{t}
+   \]
 
 2. **Final Correlation**:
-\[ r = \frac{S_{\text{pre}}^2 + S_{\text{post}}^2 - S_{\text{change}}^2}{2 \cdot S_{\text{pre}} \cdot S_{\text{post}}} \]
+   \[
+   r = \frac{S_{\text{pre}}^2 + S_{\text{post}}^2 - S_{\text{change}}^2}{2 \cdot S_{\text{pre}} \cdot S_{\text{post}}}
+   \]
 
 3. **Convert F to t**:
-\[ t = \sqrt{F} \]
+   \[
+   t = \sqrt{F}
+   \]
