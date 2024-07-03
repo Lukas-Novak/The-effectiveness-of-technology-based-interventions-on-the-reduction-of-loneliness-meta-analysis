@@ -1,0 +1,96 @@
+---
+title: "Exploration of wierd values of correlation coefficient"
+author: ""
+date: ""
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, echo=FALSE)
+```
+
+
+## Checking whether R functions are correct
+
+## 1. Checking `convert_F_to_t` function
+
+Problematic is study of Perkins et al. (2023) I am first creating objects containing numbers reported in this study e.g. pre_mean etc.
+
+```{r include=FALSE}
+# Creating variables
+post_mean <-  data$`Tratment Group Post Mean`
+post_mean
+
+pre_mean <-  data$`Treatment Group Pre Mean`
+pre_mean
+
+M_change <- post_mean - pre_mean
+M_change
+
+F_value <- data$F_value
+F_value
+
+N <- data$`Treatment Group Sample Size`
+N
+
+pre_sd <- data$`Treatment Group Pre SD`
+post_sd <-data$`Treatment Group Post SD`
+t <- convert_F_to_t(F_value)
+
+change_sd <- calculate_change_sd(M_change, N, t)
+change_sd
+```
+
+Converting f to t
+```{r}
+t <- convert_F_to_t(data$F_value)
+t
+```
+
+I use also another formula reported here: https://matthewbjane.com/blog-posts/blog-post-3.html; to check whether it is correct.
+
+```{r}
+t <- M_change / (change_sd/sqrt(N))
+t
+```
+
+Values are the same so t-value is correct so function: `convert_F_to_t` is working correctly.
+
+## 2. Checking `calculate_change_sd` function
+
+As far as I know, there is no way to check whether this function is working correctly by using some alternative method and than compare results. But the code does seems to be straightforward and looks analogous to mathematical formula: 
+
+ **Standard Deviation of Change Scores**:
+\[ S_{\text{change}} = \frac{M_{\text{change}} \cdot \sqrt{N}}{t} \]
+
+```r
+# Function to calculate change score standard deviation
+calculate_change_sd <- function(M_change, N, t) {
+  return((M_change * sqrt(N)) / t)
+}
+```
+
+## 3. Checking `calculate_final_correlation` function
+
+```{r}
+calculate_final_correlation(pre_sd = pre_sd, post_sd = post_sd, change_sd = change_sd)
+```
+This is weird output, but to be sure about that, we will use the code from the following webside: https://matthewbjane.com/blog-posts/blog-post-3.html. The code from this source is as follows:
+
+```{r echo=TRUE}
+(t^2*(data$`Treatment Group Pre SD`^2 + data$`Treatment Group Post SD`^2) - N * M_change^2) / (2*t^2*data$`Treatment Group Pre SD`* data$`Treatment Group Post SD`)
+```
+
+Ok, output looks the same thus: 
+
+### 1. Source problem lays in the reported data per se
+
+### 2. In the matematical formulas used to calculate correlations from reported data
+
+
+
+
+
+
+
