@@ -16,16 +16,13 @@ The equations used in this analysis were obtained from [Matthew B. Jane's blog p
 
 
 1. **Standard Deviation of Change Scores**:
-   \[
-   S_{\text{change}} = \frac{M_{\text{change}} \cdot \sqrt{N}}{t}
-   \]
+   <br>
+   <img src="https://latex.codecogs.com/svg.latex?S_{\text{change}}=\frac{M_{\text{change}}\cdot\sqrt{N}}{t}" alt="S_{\text{change}}=\frac{M_{\text{change}}\cdot\sqrt{N}}{t}">
 
 2. **Final Correlation**:
-   \[
-   r = \frac{S_{\text{pre}}^2 + S_{\text{post}}^2 - S_{\text{change}}^2}{2 \cdot S_{\text{pre}} \cdot S_{\text{post}}}
-   \]
+   <br>
+   <img src="https://latex.codecogs.com/svg.latex?r=\frac{S_{\text{pre}}^2+S_{\text{post}}^2-S_{\text{change}}^2}{2\cdot{S_{\text{pre}}}\cdot{S_{\text{post}}}}" alt="r=\frac{S_{\text{pre}}^2+S_{\text{post}}^2-S_{\text{change}}^2}{2\cdot{S_{\text{pre}}}\cdot{S_{\text{post}}}}">
 
 3. **Convert F to t**:
-   \[
-   t = \sqrt{F}
-   \]
+   <br>
+   <img src="https://latex.codecogs.com/svg.latex?t=\sqrt{F}" alt="t=\sqrt{F}">
