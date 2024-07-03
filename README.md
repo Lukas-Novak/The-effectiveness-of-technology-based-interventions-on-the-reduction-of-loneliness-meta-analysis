@@ -1,6 +1,3 @@
-Sure, here is the raw code for your README.md file:
-
-```markdown
 # Meta-Analysis of Pre/Post Correlations
 
 ## Introduction
@@ -25,4 +22,3 @@ The equations used in this analysis were obtained from [Matthew B. Jane's blog p
 
 3. **Convert F to t**:
 \[ t = \sqrt{F} \]
-```
