@@ -364,10 +364,12 @@ coefficient</h1>
 <p>Problematic is study of Perkins et al. (2023) I am first creating
 objects containing numbers reported in this study e.g. pre_mean etc.</p>
 <p>Converting f to t</p>
-<pre><code>## [1] 2.550294</code></pre>
+<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941
+##  [8] 0.1000000 2.2671568 2.3664319 5.8915193</code></pre>
 <p>I use also another formula reported here: <a href="https://matthewbjane.com/blog-posts/blog-post-3.html" class="uri">https://matthewbjane.com/blog-posts/blog-post-3.html</a>; to
 check whether it is correct.</p>
-<pre><code>## [1] 2.550294</code></pre>
+<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941
+##  [8] 0.1000000 2.2671568 2.3664319 5.8915193</code></pre>
 <p>Values are the same so t-value is correct so function:
 <code>convert_F_to_t</code> is working correctly.</p>
 </div>
@@ -386,20 +388,19 @@ calculate_change_sd &lt;- function(M_change, N, t) {
 </div>
 <div id="checking-calculate_final_correlation-function" class="section level2">
 <h2>3. Checking <code>calculate_final_correlation</code> function</h2>
-<pre><code>## [1] -2.699858</code></pre>
+<pre><code>##  [1]    0.4071109   -0.3800419    0.7565056    0.9987625    0.1484347
+##  [6] -227.3256964   -2.6998580 -791.0000000    0.6974001   -0.5401260
+## [11]    0.8905262</code></pre>
 <p>This is weird output, but to be sure about that, we will use the code
 from the following webside: <a href="https://matthewbjane.com/blog-posts/blog-post-3.html" class="uri">https://matthewbjane.com/blog-posts/blog-post-3.html</a>.
 The code from this source is as follows:</p>
 <pre class="r"><code>(t^2*(data$`Treatment Group Pre SD`^2 + data$`Treatment Group Post SD`^2) - N * M_change^2) / (2*t^2*data$`Treatment Group Pre SD`* data$`Treatment Group Post SD`)</code></pre>
-<pre><code>## [1] -2.699858</code></pre>
-<p>Ok, output looks the same thus:</p>
-<div id="source-problem-lays-in-the-reported-data-per-se" class="section level3">
-<h3>1. Source problem lays in the reported data per se</h3>
-</div>
-<div id="in-the-matematical-formulas-used-to-calculate-correlations-from-reported-data" class="section level3">
-<h3>2. In the matematical formulas used to calculate correlations from
-reported data</h3>
-</div>
+<pre><code>##  [1]    0.4071109   -0.3800419    0.7565056    0.9987625    0.1484347
+##  [6] -227.3256964   -2.6998580 -791.0000000    0.6974001   -0.5401260
+## [11]    0.8905262</code></pre>
+<p>Ok, the output looks the same, so the source of the problem lies in
+the reported data itself. Therefore, the necessary step before analysis
+is to remove studies with values that do not make sense.</p>
 </div>
 
 

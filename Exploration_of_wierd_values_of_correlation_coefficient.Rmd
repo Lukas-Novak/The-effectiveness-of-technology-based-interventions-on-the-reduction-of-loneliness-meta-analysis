@@ -82,13 +82,7 @@ This is weird output, but to be sure about that, we will use the code from the f
 (t^2*(data$`Treatment Group Pre SD`^2 + data$`Treatment Group Post SD`^2) - N * M_change^2) / (2*t^2*data$`Treatment Group Pre SD`* data$`Treatment Group Post SD`)
 ```
 
-Ok, output looks the same thus: 
-
-### 1. Source problem lays in the reported data per se
-
-### 2. In the matematical formulas used to calculate correlations from reported data
-
-
+Ok, the output looks the same, so the source of the problem lies in the reported data itself. Therefore, the necessary step before analysis is to remove studies with values that do not make sense.
 
 
 

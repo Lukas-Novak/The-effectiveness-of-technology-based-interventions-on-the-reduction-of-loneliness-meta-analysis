@@ -1,7 +1,7 @@
 ---
 title: "Meta-Analysis of Pre/Post Correlations"
 author: "Lukas Novak"
-date: "2024-06-04"
+date: "`r Sys.Date()`"
 output:
   html_document: default
 ---
@@ -39,9 +39,11 @@ library(readxl)
 library(meta)
 library(dplyr)
 library(googlesheets4)
+library(readr)
+library(openxlsx)
 ```
 
-```{r message=FALSE, warning=FALSE}
+```{r message=FALSE, warning=FALSE, include=FALSE}
 # Path to your downloaded JSON key file
 json_key <- ".secreats/elevated-column-421419-ca4f60e60a16.json"
 
@@ -51,11 +53,36 @@ gs4_auth(path = json_key)
 # Define the Google Sheet URL or Sheet ID
 sheet_url <- "https://docs.google.com/spreadsheets/d/1IoeSzBbG3lBfPoa6qIspxMZvpbaiVTVjU9ZA0e5DZRY/edit?usp=sharing"
 
-# Read the data from the Google Sheet
-data <- read_sheet(sheet_url)
+# Define the file path to save the data
+file_path <- "Data/sheet_data.csv"
 
-# Print the data to confirm it was loaded correctly
-# print(data)
+# Attempt to read the data from the Google Sheet and handle potential errors
+data <- tryCatch({
+    # Try reading the data from the Google Sheet
+    data <- read_sheet(sheet_url)
+    
+    # Save the data to CSV
+    write_csv(data, file_path)
+    cat("Data saved to", file_path, "\n")
+    
+    # Return the data
+    data
+  }, 
+  error = function(e) {
+    # If an error occurs, read the data from the local CSV file
+    cat("Error accessing Google Sheet:", conditionMessage(e), "\n")
+    cat("Attempting to read data from local file...\n")
+    
+    # Read the data from the local CSV file
+    read_data <- read_csv(file_path)
+    cat("Data read from", file_path, "\n")
+    
+    # Return the data
+    read_data
+  }
+)
+
+
 ```
 
 ```{r include=FALSE}
@@ -163,7 +190,43 @@ html_content <- paste(readLines("./Exploration_of_wierd_values_of_correlation_co
 htmltools::HTML(html_content)
 ```
 
-```{r eval=FALSE, include=FALSE}
+## Filtering out problematic values
+
+Next step forward is to remove problematic studies from the dataset so that we will have results from only those studies that provided meaningful values. After removing these problematic once, only studies depicted in [table below](#table-studies) could be used in further analysis.  
+
+```{r}
+list_of_studies_exiding_1_correlation <- data %>%
+  filter(!between(Pre_Post_Correlation_Treatment, -1, 1) | !between(Pre_Post_Correlation_Control, -1, 1)) %>%
+  select(Author, Pre_Post_Correlation_Treatment, Pre_Post_Correlation_Control)
+
+data <- data %>%
+  filter(between(Pre_Post_Correlation_Treatment, -1, 1) & between(Pre_Post_Correlation_Control, -1, 1))
+
+```
+
+<a id="table-studies"></a>
+
+### Table 1: Studies that can be used for meta-analysis
+
+```{r}
+data %>% 
+    select(
+      Author,
+      Pre_Post_Correlation_Treatment,
+      Pre_Post_Correlation_Control) %>% 
+  knitr::kable() 
+
+data %>% 
+    select(
+      Author,
+      Pre_Post_Correlation_Treatment,
+      Pre_Post_Correlation_Control) %>% 
+  write.xlsx(file = "./Data/pre_post_correlations.xlsx")
+```
+
+## Meta-analytic results of correlations (just to see consistency between studies)
+
+```{r echo=TRUE}
 # Meta-analysis for treatment group correlations
 meta_treatment <- metacor(
   cor = data$Pre_Post_Correlation_Treatment,
@@ -175,19 +238,19 @@ meta_treatment <- metacor(
 # Meta-analysis for control group correlations
 meta_control <- metacor(
   cor = data$Pre_Post_Correlation_Control,
-  n = data$`Control Group Sample Size`,
+  n = data$`Control Sample Size`,
   studlab = data$Author,
   sm = "ZCOR"  # Using Fisher's z transformation
 )
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r echo=TRUE}
 # Print the results
 print(meta_treatment)
 print(meta_control)
 ```
 
-```{r eval=FALSE, include=FALSE}
+```{r echo=TRUE}
 # Optionally, you can also plot the forest plots
 forest(meta_treatment, fontsize = 8, spacing = .5)
 forest(meta_control, fontsize = 8, spacing = .5)
