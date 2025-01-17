@@ -55,7 +55,7 @@ t <- M_change / (change_sd/sqrt(N))
 t
 ```
 
-Values are the same so t-value is correct so function: `convert_F_to_t` is working correctly.
+Values are the same so t-value is correct so function: `convert_F_to_t` is working correctly. Note that NAs are OK here. 
 
 ## 2. Checking `calculate_change_sd` function
 

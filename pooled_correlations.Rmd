@@ -12,15 +12,16 @@ knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, echo=FALSE)
 
 ## Introduction
 
-In this analysis, I calculated the pre/post correlation for treatment and control groups using the given dataset. The correlation is calculated based on the following steps:
+In this analysis, pre/post correlation was calculated for treatment and control groups using statistical parameters reported in research articles. The correlation is calculated based on the following steps:
 
 1. Calculate the standard deviation of change scores \( SD_{\text{change}} \).
 2. Final Correlation \( r \).
 3. **F** value was converted to **t** value if necessary
+4. In case of an absence of necessary statistic such as **F** or **t** in a research article, correlation was calculated form raw data (is a study published them) using base R function `cor()` according to recommendation of [Matthew et al., 2024](https://osf.io/nx96q). 
 
 ## Source of equations
 
-The only source of equations I found is this: https://matthewbjane.com/blog-posts/blog-post-3.html. From this source, all equaions were obtained. The equations are as follows:
+The only source of equations I found is in [this preprint](https://osf.io/nx96q) and in this blog post: https://matthewbjane.com/blog-posts/blog-post-3.html. From the latter source, all equations were obtained. The equations are as follows:
 
 # Equations
 
@@ -41,6 +42,7 @@ library(dplyr)
 library(googlesheets4)
 library(readr)
 library(openxlsx)
+library(tidyverse)
 ```
 
 ```{r message=FALSE, warning=FALSE, include=FALSE}
@@ -168,6 +170,39 @@ data$Pre_Post_Correlation_Control <- mapply(calculate_study_correlation,
                                             data$SD_change)
 
 ```
+
+```{r}
+# Processing raw data from individual studies
+data_baez <- readr::read_csv2("./Data/data_from_studies/data_Baez_et_al_2017.csv")
+
+# Selecting only columns we need
+data_trunct_baez <- data_baez %>% 
+  select(group,LONELINESS_t1,LONELINESS_t2) %>% 
+  rename(Pre = LONELINESS_t1,
+         Post = LONELINESS_t2) 
+
+# Calculate pre-post correlation for each group
+data_cor_baez <- data_trunct_baez %>%
+  group_by(group) %>%
+  summarise(
+    Pre_Post_Correlation = cor(Pre, Post, use = "complete.obs")  # Calculate correlation
+  ) 
+
+# Add Author information and reshape the output
+data_summary_baez <- data_cor_baez %>% 
+  pivot_wider(names_from = group, values_from = Pre_Post_Correlation) %>%
+  rename(
+    Pre_Post_Correlation_Treatment = experimental,
+    Pre_Post_Correlation_Control = control
+  ) %>%
+  mutate(Author = "Baez et al. (2017)") %>%
+  select(Author, Pre_Post_Correlation_Treatment, Pre_Post_Correlation_Control)
+
+# Merging with already calculated data
+data <- full_join(data,data_summary_baez)
+
+```
+
 
 # Results
 
