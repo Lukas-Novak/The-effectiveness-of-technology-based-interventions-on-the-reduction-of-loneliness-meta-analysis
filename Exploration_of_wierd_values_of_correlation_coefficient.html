@@ -364,14 +364,12 @@ coefficient</h1>
 <p>Problematic is study of Perkins et al. (2023) I am first creating
 objects containing numbers reported in this study e.g. pre_mean etc.</p>
 <p>Converting f to t</p>
-<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941
-##  [8] 0.1000000 2.2671568 2.3664319 5.8915193 1.8627936 2.8670542 3.7013511
-## [15] 1.4679918 1.8466185 4.9000000        NA</code></pre>
+<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941 0.1000000 2.2671568
+## [10] 2.3664319 5.8915193 1.8627936 2.8670542 3.7013511 1.4679918 1.8466185 4.9000000        NA</code></pre>
 <p>I use also another formula reported here: <a href="https://matthewbjane.com/blog-posts/blog-post-3.html" class="uri">https://matthewbjane.com/blog-posts/blog-post-3.html</a>; to
 check whether it is correct.</p>
-<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941
-##  [8] 0.1000000 2.2671568 2.3664319 5.8915193 1.8627936 2.8670542 3.7013511
-## [15] 1.4679918 1.8466185 4.9000000        NA</code></pre>
+<pre><code>##  [1] 2.3643181 2.3108440 2.5514702 0.6403124 2.3643181 0.2236068 2.5502941 0.1000000 2.2671568
+## [10] 2.3664319 5.8915193 1.8627936 2.8670542 3.7013511 1.4679918 1.8466185 4.9000000        NA</code></pre>
 <p>Values are the same so t-value is correct so function:
 <code>convert_F_to_t</code> is working correctly. Note that NAs are OK
 here.</p>
@@ -391,18 +389,16 @@ calculate_change_sd &lt;- function(M_change, N, t) {
 </div>
 <div id="checking-calculate_final_correlation-function" class="section level2">
 <h2>3. Checking <code>calculate_final_correlation</code> function</h2>
-<pre><code>##  [1]    0.40711091   -0.38004194    0.75650562    0.99876249    0.14843470
-##  [6] -227.32569640   -2.69985804 -791.00000000    0.69740008   -0.54012603
-## [11]    0.89052618    0.80382618  -52.38589922    0.09160821    0.13709260
-## [16]    0.86834007    0.09297043            NA</code></pre>
+<pre><code>##  [1]    0.40711091   -0.38004194    0.75650562    0.99876249    0.14843470 -227.32569640
+##  [7]   -2.69985804 -791.00000000    0.69740008   -0.54012603    0.89052618    0.80382618
+## [13]  -52.38589922    0.09160821    0.13709260    0.86834007    0.09297043            NA</code></pre>
 <p>This is weird output, but to be sure about that, we will use the code
 from the following webside: <a href="https://matthewbjane.com/blog-posts/blog-post-3.html" class="uri">https://matthewbjane.com/blog-posts/blog-post-3.html</a>.
 The code from this source is as follows:</p>
 <pre class="r"><code>(t^2*(data$`Treatment Group Pre SD`^2 + data$`Treatment Group Post SD`^2) - N * M_change^2) / (2*t^2*data$`Treatment Group Pre SD`* data$`Treatment Group Post SD`)</code></pre>
-<pre><code>##  [1]    0.40711091   -0.38004194    0.75650562    0.99876249    0.14843470
-##  [6] -227.32569640   -2.69985804 -791.00000000    0.69740008   -0.54012603
-## [11]    0.89052618    0.80382618  -52.38589922    0.09160821    0.13709260
-## [16]    0.86834007    0.09297043            NA</code></pre>
+<pre><code>##  [1]    0.40711091   -0.38004194    0.75650562    0.99876249    0.14843470 -227.32569640
+##  [7]   -2.69985804 -791.00000000    0.69740008   -0.54012603    0.89052618    0.80382618
+## [13]  -52.38589922    0.09160821    0.13709260    0.86834007    0.09297043            NA</code></pre>
 <p>Ok, the output looks the same, so the source of the problem lies in
 the reported data itself. Therefore, the necessary step before analysis
 is to remove studies with values that do not make sense.</p>

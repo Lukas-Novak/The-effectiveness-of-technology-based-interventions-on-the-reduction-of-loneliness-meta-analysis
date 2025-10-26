@@ -49,8 +49,11 @@ library(tidyverse)
 # Path to your downloaded JSON key file
 json_key <- ".secreats/elevated-column-421419-ca4f60e60a16.json"
 
-# Authenticate using the service account
-gs4_auth(path = json_key)
+# Check if json key exists and if so, read it
+if (file.exists(json_key)) {
+  # Authenticate using the service accoun
+  gs4_auth(path = json_key)
+}
 
 # Define the Google Sheet URL or Sheet ID
 sheet_url <- "https://docs.google.com/spreadsheets/d/1IoeSzBbG3lBfPoa6qIspxMZvpbaiVTVjU9ZA0e5DZRY/edit?usp=sharing"
@@ -83,29 +86,6 @@ data <- tryCatch({
     read_data
   }
 )
-
-```
-
-```{r include=FALSE}
-# Function to randomly assign F_value and SD_change if missing
-assign_random_columns <- function(data) {
-  data <- data %>%
-    rowwise() %>%
-    mutate(
-      `F_value` = ifelse(runif(1) > 0.5, runif(1, min = 1, max = 10), NA),
-      `SD_change` = ifelse(is.na(`F_value`), runif(1, min = 1, max = 10), NA)
-    ) %>%
-    ungroup()
-  return(data)
-}
-
-# Apply the function to the data
-if(all(is.na(data %>% select(c("F_value","SD_change"))))) {
-  print("There are no data in F_calue or SD_change so I am simulating data for them...")
-  data <- assign_random_columns(data)
-} else {
-  print("Ok, there is a either F_value column or SD_change and thus I am using values from these columns")
-}
 
 ```
 
@@ -256,36 +236,4 @@ data %>%
       Pre_Post_Correlation_Treatment,
       Pre_Post_Correlation_Control) %>% 
   write.xlsx(file = "./Data/pre_post_correlations.xlsx")
-```
-
-## Meta-analytic results of correlations (just to see consistency between studies)
-
-```{r echo=TRUE}
-# Meta-analysis for treatment group correlations
-meta_treatment <- metacor(
-  cor = data$Pre_Post_Correlation_Treatment,
-  n = data$`Treatment Group Sample Size`,
-  studlab = data$Author,
-  sm = "ZCOR"  # Using Fisher's z transformation
-)
-
-# Meta-analysis for control group correlations
-meta_control <- metacor(
-  cor = data$Pre_Post_Correlation_Control,
-  n = data$`Control Sample Size`,
-  studlab = data$Author,
-  sm = "ZCOR"  # Using Fisher's z transformation
-)
-```
-
-```{r echo=TRUE}
-# Print the results
-print(meta_treatment)
-print(meta_control)
-```
-
-```{r echo=TRUE}
-# Optionally, you can also plot the forest plots
-forest(meta_treatment, fontsize = 8, spacing = .5)
-forest(meta_control, fontsize = 8, spacing = .5)
 ```
