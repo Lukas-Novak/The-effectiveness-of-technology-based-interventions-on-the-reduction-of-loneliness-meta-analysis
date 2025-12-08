@@ -166,12 +166,28 @@ predict(meta_model, digits = 3)
 This is the primary visualization of the meta-analysis results.
 
 ```{r forest-plot}
-# Generate the forest plot
+# Create publication-ready labels for the plot
+# This replaces the underscore with a space and adds parentheses around the year.
+analysis_data$pretty_slab <- gsub("_", " (", analysis_data$slab)
+analysis_data$pretty_slab <- paste0(analysis_data$pretty_slab, ")")
+
+# Update the meta-analysis model to use the new labels
+# This ensures the new labels are carried through to the plot.
+meta_model <- rma(
+  yi, vi,
+  data = analysis_data,
+  method = "REML", 
+  test = "knha",   
+  slab = pretty_slab # Use the new, clean labels
+)
+
+# Create the plot
+# This opens the graphics device and draws the main forest plot.
 forest(meta_model,
        xlab = "Standardized Mean Difference (SMD)",
        showweights = TRUE,
        header = c("Author(s) and Year", "SMD [95% CI]"),
-       mlab = "REML Model (HKSJ)", # Label for the pooled estimate
+       mlab = "REML Model (HKSJ)", 
        cex = 0.9,
        alim = c(-3, 3),
        digits = 2,
@@ -179,20 +195,21 @@ forest(meta_model,
        addpred = TRUE,
        annotate = TRUE)
 
-# First, run predict() once and store the result
+# Add annotations to the plot
+
+# Get the prediction interval values
 pred_results <- predict(meta_model)
 
 # Add text with heterogeneity statistics
-text(x = -3, y = -0.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
+text(x = -4.7, y = - 1.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
     .(round(meta_model$QE, 2)), ", df = ", .(meta_model$k - meta_model$p),
     ", p = ", .(round(meta_model$QEp, 3)), "; ", I^2, " = ",
     .(round(meta_model$I2, 1)), "%")))
 
-# Add text with the prediction interval using the CORRECT element names (pi.lb, pi.ub)
-text(x = -6, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
+# Add text with the prediction interval
+text(x = -3, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
     .(round(pred_results$pi.lb, 2)), ", ",
     .(round(pred_results$pi.ub, 2)), "]")))
-
 ```
 
 ### 5.4. Publication Bias Analysis
