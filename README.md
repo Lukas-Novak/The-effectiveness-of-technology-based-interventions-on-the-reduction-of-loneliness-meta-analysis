@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Universal Data Analysis Image (Docker Compose)
 
 ### **Purpose**
