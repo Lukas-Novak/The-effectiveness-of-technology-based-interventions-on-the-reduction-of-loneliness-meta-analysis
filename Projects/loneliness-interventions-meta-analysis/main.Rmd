@@ -1,0 +1,223 @@
+---
+title: "Revised Meta-analysis of Technology-Based Interventions for Loneliness"
+author: "Jana Furstova & Lukas Novak"
+date: '2025-12-08'
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, fig.width=10, fig.align='center')
+set.seed(48468) # for reproducibility
+```
+
+## 1. Setup and Libraries
+This chunk loads all necessary R packages for the analysis.
+
+```{r packages}
+library(tidyverse) # For data manipulation (dplyr, etc.)
+library(metafor)   # The core package for meta-analysis
+library(knitr)     # For report generation
+library(kableExtra)# For creating nice HTML tables
+```
+
+## 2. Load and Prepare Data
+Here, we load the raw data, merge the pre-post correlations, and apply the necessary study exclusions.
+
+```{r load-data}
+# Load the two data files
+cor_dat <-  readxl::read_xlsx("~/Projects/loneliness-interventions-meta-analysis/Data/pre_post_correlations.xlsx")
+dat <- read.csv("~/Projects/loneliness-interventions-meta-analysis/Data/meta_data.csv")
+
+# This creates a 'Study_name' column in cor_dat that matches the format in the 'dat' file.
+cor_dat <- cor_dat %>%
+  mutate(Study_name = case_when(
+    Author == "Brog et al. (2022)"         ~ "Brog_2022",
+    Author == "Hill et al. (2006)"         ~ "Hill_2006",
+    Author == "Iyer et al. (2023)"         ~ "Iyer_2023",
+    Author == "Karkosz et al. (2024)"      ~ "Karkosz_2024",
+    Author == "Robinson et al. (2013)"     ~ "Robinson_2013",
+    Author == "Schwindenhammer et al. (2014)" ~ "Schwindenhammer_2014",
+    Author == "Shapira et al. (2007)"      ~ "Shapira_2007",
+    Author == "Shapira et al. (2021a)"      ~ "Shapira_2021a",
+    Author == "Sun (2023)"                 ~ "Sun_2023",
+    Author == "Baez et al. (2017)"         ~ "Baez_2017",
+    TRUE                                 ~ Author
+  ))
+
+# Merge the two datasets using the new, standardized "Study_name" column
+# This is an "inner join" by default, so studies not present in BOTH files
+# (like Baez_2017, which is not in `dat`) are automatically dropped.
+analysis_data <- merge(
+  dat,
+  cor_dat,
+  by = "Study_name" 
+)
+
+# --- Study Exclusions based on Manuscript Methods ---
+# Now we only need to explicitly exclude studies that successfully merged but are not eligible.
+# 1. Exclude Shapira_2007: Determined to be quasi-experimental.
+# 2. Exclude Sun_2023: This study was retracted.
+studies_to_exclude <- c("Shapira_2007", "Sun_2023")
+
+analysis_data <- analysis_data %>% 
+  filter(!Study_name %in% studies_to_exclude)
+
+# Display the final dataset for verification
+# This should correctly show a data frame with 7 rows.
+kable(analysis_data, caption = "Final Dataset for Meta-Analysis") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
+```
+
+## 3. Calculate Between-Group Effect Sizes
+We calculate the effect size for each study. The chosen measure is `"SMCC"` (Standardized Mean Change using Change Score standardization), which is ideal for a pre-post design with a control group. We calculate it separately for the treatment and control groups and then compute the final difference.
+
+```{r calculate-effect-sizes}
+# Calculate within-group standardized mean change for the TREATMENT groups
+es_treat <- escalc(
+  measure = "SMCC",
+  m1i = Treatment_post_Mean,   # Post-intervention mean
+  m2i = Treatment_Pre_Mean,      # Pre-intervention mean
+  sd1i = Treatment_post_SD,     # Post-intervention SD
+  sd2i = Treatment_Pre_SD,       # Pre-intervention SD
+  ni = Treatment_Sample_Size,    # Sample size
+  ri = Pre_Post_Correlation_Treatment, # Pre-post correlation
+  data = analysis_data
+)
+
+# Calculate within-group standardized mean change for the CONTROL groups
+es_ctrl <- escalc(
+  measure = "SMCC",
+  m1i = Control_post_Mean,
+  m2i = Control_Pre_Mean,
+  sd1i = Control_post_SD,
+  sd2i = Control_Pre_SD,
+  ni = Control_sample_size,
+  ri = Pre_Post_Correlation_Control,
+  data = analysis_data
+)
+
+# The final effect size (yi) for the meta-analysis is the difference between the treatment change and the control change.
+# The final variance (vi) is the sum of the two variances (as the groups are independent).
+analysis_data$yi <- es_treat$yi - es_ctrl$yi
+analysis_data$vi <- es_treat$vi + es_ctrl$vi
+
+# Add study labels for plotting
+analysis_data$slab <- analysis_data$Study_name
+```
+
+## 4. Perform Meta-Analysis
+We run the main random-effects model using the Hartung-Knapp-Sidik-Jonkman method.
+
+```{r run-meta-analysis}
+# Run the robust random-effects model (REML + HKSJ)
+# This is the primary model for our manuscript
+meta_model <- rma(
+  yi, vi,
+  data = analysis_data,
+  method = "REML", # Restricted Maximum-Likelihood is preferred over DL
+  test = "knha",   # Hartung-Knapp-Sidik-Jonkman adjustment
+  slab = slab
+)
+
+# Display the full summary of the model results
+# This output contains the pooled effect, heterogeneity stats (I^2, Q), and significance tests.
+summary(meta_model)
+```
+
+## 5. Generate Outputs for Manuscript
+
+### 5.1. Data for Manuscript Table 2
+This chunk extracts the study-level results into a clean table, exactly as requested. This table provides the core quantitative results for each included study.
+
+```{r generate-table-2}
+# Create a summary data frame of the results
+results_table <- summary(meta_model, digits=3)
+
+# Extract the individual study data into a clean table
+table_2_data <- data.frame(
+    Study = meta_model$slab,
+    SMD = round(meta_model$yi, 3),
+    Std_Error = round(sqrt(meta_model$vi), 3),
+    Variance = round(meta_model$vi, 3),
+    CI_lower = round(results_table$ci.lb, 3),
+    CI_upper = round(results_table$ci.ub, 3),
+    Z_value = round(meta_model$yi / sqrt(meta_model$vi), 3),
+    P_value = round(2 * pnorm(abs(meta_model$yi / sqrt(meta_model$vi)), lower.tail = FALSE), 3)
+)
+
+# Print the table in a clean format
+kable(table_2_data, row.names = FALSE, caption = "Study-Level Results for Manuscript Table 2") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
+```
+
+### 5.2. Prediction Interval
+The prediction interval shows the expected range of true effects in future studies.
+
+```{r prediction-interval}
+# Calculate and print the 95% prediction interval
+predict(meta_model, digits = 3)
+```
+
+### 5.3. Forest Plot
+This is the primary visualization of the meta-analysis results.
+
+```{r forest-plot}
+# Generate the forest plot
+forest(meta_model,
+       xlab = "Standardized Mean Difference (SMD)",
+       showweights = TRUE,
+       header = c("Author(s) and Year", "SMD [95% CI]"),
+       mlab = "REML Model (HKSJ)", # Label for the pooled estimate
+       cex = 0.9,
+       alim = c(-3, 3),
+       digits = 2,
+       addfit = TRUE, 
+       addpred = TRUE,
+       annotate = TRUE)
+
+# First, run predict() once and store the result
+pred_results <- predict(meta_model)
+
+# Add text with heterogeneity statistics
+text(x = -3, y = -0.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
+    .(round(meta_model$QE, 2)), ", df = ", .(meta_model$k - meta_model$p),
+    ", p = ", .(round(meta_model$QEp, 3)), "; ", I^2, " = ",
+    .(round(meta_model$I2, 1)), "%")))
+
+# Add text with the prediction interval using the CORRECT element names (pi.lb, pi.ub)
+text(x = -6, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
+    .(round(pred_results$pi.lb, 2)), ", ",
+    .(round(pred_results$pi.ub, 2)), "]")))
+
+```
+
+### 5.4. Publication Bias Analysis
+
+```{r publication-bias}
+# 1. Funnel Plot
+# A symmetric plot suggests no small-study effects (like publication bias)
+funnel(meta_model, main = "Funnel Plot for Publication Bias")
+
+# 2. Egger's Regression Test
+# A non-significant p-value (p > 0.05) suggests no significant funnel plot asymmetry.
+reg_test_results <- regtest(meta_model, model = "rma")
+print(reg_test_results)
+
+# 3. Trim and Fill Analysis
+# This method estimates the number of potentially missing studies and the adjusted pooled effect.
+trimfill_results <- trimfill(meta_model)
+summary(trimfill_results)
+```
+
+### 5.5. Sensitivity Analysis (Leave-One-Out)
+This analysis recalculates the pooled effect by removing one study at a time to see if any single study disproportionately influences the overall result.
+
+```{r sensitivity-analysis}
+# Perform and print the leave-one-out analysis
+leave1out_results <- leave1out(meta_model)
+print(leave1out_results)
+```

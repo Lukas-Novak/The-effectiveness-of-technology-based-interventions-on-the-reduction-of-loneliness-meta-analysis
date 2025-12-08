@@ -1,0 +1,20 @@
+services:
+  rstudio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ${IMAGE:-lukasjirinovak/universal_data_analysis:latest}
+    container_name: ${CONTAINER_NAME:-universal-data-analysis}
+    environment:
+      DISABLE_AUTH: "true"
+    ports:
+      - "${HOST_PORT:-8787}:8787"
+    volumes:
+      - ./Projects:/home/rstudio/Projects
+      # Optional mounts: uncomment as needed
+      # - ./.git:/home/rstudio/.git
+      - ./.dockerignore:/home/rstudio/.dockerignore
+      - ./.Rprofile:/home/rstudio/.Rprofile
+    restart: "no"
+    tty: true
+    stdin_open: true

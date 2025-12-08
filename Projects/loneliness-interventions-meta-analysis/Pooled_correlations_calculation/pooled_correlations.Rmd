@@ -1,0 +1,239 @@
+---
+title: "Meta-Analysis of Pre/Post Correlations"
+author: "Lukas Novak"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+---
+
+```{r echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, echo=FALSE)
+```
+
+## Introduction
+
+In this analysis, pre/post correlation was calculated for treatment and control groups using statistical parameters reported in research articles. The correlation is calculated based on the following steps:
+
+1. Calculate the standard deviation of change scores \( SD_{\text{change}} \).
+2. Final Correlation \( r \).
+3. **F** value was converted to **t** value if necessary
+4. In case of an absence of necessary statistic such as **F** or **t** in a research article, correlation was calculated form raw data (is a study published them) using base R function `cor()` according to recommendation of [Matthew et al., 2024](https://osf.io/nx96q). 
+
+## Source of equations
+
+The only source of equations I found is in [this preprint](https://osf.io/nx96q) and in this blog post: https://matthewbjane.com/blog-posts/blog-post-3.html. From the latter source, all equations were obtained. The equations are as follows:
+
+# Equations
+
+1. **Standard Deviation of Change Scores**:
+\[ S_{\text{change}} = \frac{M_{\text{change}} \cdot \sqrt{N}}{t} \]
+
+2. **Final Correlation**:
+\[ r = \frac{S_{\text{pre}}^2 + S_{\text{post}}^2 - S_{\text{change}}^2}{2 \cdot S_{\text{pre}} \cdot S_{\text{post}}} \]
+
+3. **Convert F to t**:
+\[ t = \sqrt{F} \]
+
+```{r echo=FALSE}
+# Load necessary packages
+library(readxl)
+library(meta)
+library(dplyr)
+library(googlesheets4)
+library(readr)
+library(openxlsx)
+library(tidyverse)
+```
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+# Path to your downloaded JSON key file
+json_key <- ".secreats/elevated-column-421419-ca4f60e60a16.json"
+
+# Check if json key exists and if so, read it
+if (file.exists(json_key)) {
+  # Authenticate using the service accoun
+  gs4_auth(path = json_key)
+}
+
+# Define the Google Sheet URL or Sheet ID
+sheet_url <- "https://docs.google.com/spreadsheets/d/1IoeSzBbG3lBfPoa6qIspxMZvpbaiVTVjU9ZA0e5DZRY/edit?usp=sharing"
+
+# Define the file path to save the data
+file_path <- "~/Projects/loneliness-interventions-meta-analysis/Data/sheet_data.csv"
+
+# Attempt to read the data from the Google Sheet and handle potential errors
+data <- tryCatch({
+    # Try reading the data from the Google Sheet
+    data <- read_sheet(sheet_url)
+    
+    # Save the data to CSV
+    write_csv(data, file_path)
+    cat("Data saved to", file_path, "\n")
+    
+    # Return the data
+    data
+  }, 
+  error = function(e) {
+    # If an error occurs, read the data from the local CSV file
+    cat("Error accessing Google Sheet:", conditionMessage(e), "\n")
+    cat("Attempting to read data from local file...\n")
+    
+    # Read the data from the local CSV file
+    read_data <- read_csv(file_path)
+    cat("Data read from", file_path, "\n")
+    
+    # Return the data
+    read_data
+  }
+)
+
+```
+
+```{r echo=FALSE}
+print("I am filtering only those studies, which are having value in etiher F_value or SD_change columns")
+data = data %>% 
+  filter(if_any(c("F_value","SD_change"), ~!is.na(.)))
+```
+
+```{r}
+# Function to calculate change score standard deviation
+calculate_change_sd <- function(M_change, N, t) {
+  return((M_change * sqrt(N)) / t)
+}
+
+# Function to calculate final correlation
+calculate_final_correlation <- function(pre_sd, post_sd, change_sd) {
+  return((pre_sd^2 + post_sd^2 - change_sd^2) / (2 * pre_sd * post_sd))
+}
+
+# Function to convert F to t
+convert_F_to_t <- function(F) {
+  return(sqrt(F))
+}
+```
+
+```{r}
+# Function to calculate correlation for a single study using either F_value or SD_change
+calculate_study_correlation <- function(pre_sd, post_sd, pre_mean, post_mean, N, F_value, SD_change) {
+  if (!is.na(F_value)) {
+    t <- convert_F_to_t(F_value)
+    M_change <- post_mean - pre_mean
+    change_sd <- calculate_change_sd(M_change, N, t)
+  } else if (!is.na(SD_change)) {
+    change_sd <- SD_change
+  } else {
+    stop("Both F_value and SD_change are missing")
+  }
+  return(calculate_final_correlation(pre_sd, post_sd, change_sd))
+}
+```
+
+```{r}
+# Calculate correlation for treatment group
+data$Pre_Post_Correlation_Treatment <- mapply(calculate_study_correlation, 
+                                              data$`Treatment Group Pre SD`, 
+                                              data$`Treatment Group Post SD`, 
+                                              data$`Treatment Group Pre Mean`, 
+                                              data$`Tratment Group Post Mean`, 
+                                              data$`Treatment Group Sample Size`, 
+                                              data$F_value, 
+                                              data$SD_change)
+
+# Calculate correlation for control group
+data$Pre_Post_Correlation_Control <- mapply(calculate_study_correlation, 
+                                            data$`Control Pre SD`, 
+                                            data$`Control Post SD`, 
+                                            data$`Control Pre Mean`, 
+                                            data$`Control Post Mean`, 
+                                            data$`Control Sample Size`, 
+                                            data$F_value, 
+                                            data$SD_change)
+
+```
+
+```{r}
+# Processing raw data from individual studies
+data_baez <- readr::read_csv2("~/Projects/loneliness-interventions-meta-analysis/Data/data_from_studies/data_Baez_et_al_2017.csv")
+
+# Selecting only columns we need
+data_trunct_baez <- data_baez %>% 
+  select(group,LONELINESS_t1,LONELINESS_t2) %>% 
+  rename(Pre = LONELINESS_t1,
+         Post = LONELINESS_t2) 
+
+# Calculate pre-post correlation for each group
+data_cor_baez <- data_trunct_baez %>%
+  group_by(group) %>%
+  summarise(
+    Pre_Post_Correlation = cor(Pre, Post, use = "complete.obs")  # Calculate correlation
+  ) 
+
+# Add Author information and reshape the output
+data_summary_baez <- data_cor_baez %>% 
+  pivot_wider(names_from = group, values_from = Pre_Post_Correlation) %>%
+  rename(
+    Pre_Post_Correlation_Treatment = experimental,
+    Pre_Post_Correlation_Control = control
+  ) %>%
+  mutate(Author = "Baez et al. (2017)") %>%
+  select(Author, Pre_Post_Correlation_Treatment, Pre_Post_Correlation_Control)
+
+# Merging with already calculated data
+data <- full_join(data,data_summary_baez)
+
+```
+
+
+# Results
+
+```{r}
+# Correlation between pre and post in treatment and control groups
+data %>% 
+  select(Author, Pre_Post_Correlation_Treatment, Pre_Post_Correlation_Control) %>% 
+  knitr::kable()
+```
+
+Ok, some correlations in output exceeds one, this is weird...I am running some diagnostic scripts to figure this out....
+
+```{r renderChildScript, echo=FALSE}
+# Render the external Rmd script
+rmarkdown::render("~/Projects/loneliness-interventions-meta-analysis/Exploration_of_wierd_values/Exploration_of_wierd_values_of_correlation_coefficient.Rmd", output_file = "~/Projects/loneliness-interventions-meta-analysis/Exploration_of_wierd_values/Exploration_of_wierd_values_of_correlation_coefficient.html", quiet = TRUE)
+
+# Include the rendered HTML in the main document
+html_content <- paste(readLines("~/Projects/loneliness-interventions-meta-analysis/Exploration_of_wierd_values/Exploration_of_wierd_values_of_correlation_coefficient.html", warn = FALSE), collapse = "\n")
+htmltools::HTML(html_content)
+```
+
+## Filtering out problematic values
+
+Next step forward is to remove problematic studies from the dataset so that we will have results from only those studies that provided meaningful values. After removing these problematic once, only studies depicted in [table below](#table-studies) could be used in further analysis.  
+
+```{r}
+list_of_studies_exiding_1_correlation <- data %>%
+  filter(!between(Pre_Post_Correlation_Treatment, -1, 1) | !between(Pre_Post_Correlation_Control, -1, 1)) %>%
+  select(Author, Pre_Post_Correlation_Treatment, Pre_Post_Correlation_Control)
+
+data <- data %>%
+  filter(between(Pre_Post_Correlation_Treatment, -1, 1) & between(Pre_Post_Correlation_Control, -1, 1))
+
+```
+
+<a id="table-studies"></a>
+
+### Table 1: Studies that can be used for meta-analysis
+
+```{r}
+data %>% 
+    select(
+      Author,
+      Pre_Post_Correlation_Treatment,
+      Pre_Post_Correlation_Control) %>% 
+  knitr::kable() 
+
+data %>% 
+    select(
+      Author,
+      Pre_Post_Correlation_Treatment,
+      Pre_Post_Correlation_Control) %>% 
+  write.xlsx(file = "~/Projects/loneliness-interventions-meta-analysis/Data/pre_post_correlations.xlsx")
+```
