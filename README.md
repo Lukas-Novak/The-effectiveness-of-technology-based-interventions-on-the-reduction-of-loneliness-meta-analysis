@@ -1,64 +1,122 @@
-# Universal Data Analysis Image (Docker Compose)
+# Loneliness Interventions Meta-Analysis  
+**Reproducible R analysis using Docker, RStudio, and renv**
 
-### **Purpose**
+## Purpose
 
-This repository provides a general-purpose Docker image and Compose configuration for R-based data analysis. It is designed to support multiple projects, each with its own reproducible dependency management via `renv`. The image comes pre-loaded with common system libraries and R packages to ensure a smooth analysis workflow.
+This repository contains all data, code, and infrastructure required to reproduce a meta-analysis of loneliness interventions.
 
-### **Quick Start: Setting Up the Environment**
+The analysis is implemented in **R**, with package versions locked via **renv**, and can be executed either:
 
-Follow these steps to build and run the RStudio container. This is the first step required before running any analysis.
+- locally (with R installed), or  
+- in a fully reproducible **Docker + RStudio** environment (recommended).
 
-1.  **Configure Environment:** Edit the `.env` file to set your desired container name and host port.
-    ```ini
-    CONTAINER_NAME=universal-data-analysis
-    HOST_PORT=8787
-    IMAGE=lukasjirinovak/universal_data_analysis:latest
-    ```
-
-2.  **Add Projects:** Your R projects should be placed inside the `Projects/` directory. The repository already contains the loneliness meta-analysis project as an example.
-
-3.  **Build and Run:**
-    ```bash
-    docker compose up --build -d
-    ```
-
-4.  **Access RStudio:** Open your browser and navigate to **`http://localhost:8787`** (or the port you specified).
+The repository follows a **single-project layout**. No external project scaffolding is required.
 
 ---
 
-### **Project Example: Reproducing the Loneliness Meta-Analysis**
+## Repository Structure
 
-Once the environment is running (following the Quick Start), you can reproduce the meta-analysis.
+```
 
-#### **File Locations**
+loneliness-interventions-meta-analysis/
+├── data_and_code/                # Analysis code and data
+│   ├── Data/                     # Input data
+│   ├── Exploration_of_wierd_values/
+│   ├── Pooled_correlations_calculation/
+│   ├── main.Rmd                  # Main analysis script
+│   ├── main.html                 # Rendered report (output)
+│   └── README.md                 # Project-specific notes
+├── Dockerfile                    # R + system dependencies
+├── docker-compose.yml            # RStudio container configuration
+├── renv.lock                     # Locked R package versions
+└── README.md                     # (this file)
 
-*   **Project Directory:** All files for this specific project are located inside the container at:
-    `Projects/loneliness-interventions-meta-analysis/`
-*   **Input Data:** The raw data files are in:
-    `Projects/loneliness-interventions-meta-analysis/Data/`
-*   **Main Script:** The complete analysis is contained in the R Markdown file:
-    `Projects/loneliness-interventions-meta-analysis/main.Rmd`
+````
 
-#### **How to Run the Analysis**
+---
 
-You have two options to run the analysis and generate the final report.
+## Running the Analysis (Recommended: Docker)
 
-**Option 1: Using the RStudio Interface (Recommended)**
+### 1. Build and start the container
 
-1.  In the RStudio "Files" pane (bottom-right), navigate to `Projects` -> `loneliness-interventions-meta-analysis`.
-2.  Click on `main.Rmd` to open it in the editor.
-3.  Click the **"Knit"** button at the top of the editor.
+From the repository root:
 
-**Option 2: Using the RStudio Console**
+```bash
+docker compose up --build -d
+````
 
-1.  In the RStudio Console, run the following command:
-    ```r
-    rmarkdown::render("Projects/loneliness-interventions-meta-analysis/main.Rmd")
-    ```
+### 2. Open RStudio
 
-#### **Expected Output**
+Navigate to:
 
-Running the script will produce a detailed HTML report named **`main.html`** in the `Projects/loneliness-interventions-meta-analysis/` directory. This self-contained file includes all the methods, results, tables, and figures for the meta-analysis.
+```
+http://localhost:8787
+```
 
-### **Contact / Support**
-Maintainer: lukas.novak <lukasjirinovak@gmail.com>
+Authentication is disabled by default (see `docker-compose.yml`).
+
+### 3. Project location inside the container
+
+The repository root is mounted into the container at:
+
+```
+/home/rstudio/project
+```
+
+All analysis files are therefore available at:
+
+```
+/home/rstudio/project/data_and_code/
+```
+
+---
+
+## Running the Meta-Analysis
+
+### Option A: Using RStudio (recommended)
+
+1. Open `data_and_code/main.Rmd`
+2. Click **Knit**
+
+### Option B: Using the R console
+
+```r
+rmarkdown::render("data_and_code/main.Rmd")
+```
+
+The rendered report (`main.html`) will appear in the same directory.
+
+---
+
+## Running Without Docker (Local Execution)
+
+If you prefer to run the analysis locally:
+
+1. Open an R session in the repository root
+2. Restore dependencies:
+
+```r
+renv::restore()
+```
+
+3. Render the analysis:
+
+```r
+rmarkdown::render("data_and_code/main.Rmd")
+```
+
+---
+
+## Reproducibility
+
+* **R package versions** are fixed via `renv.lock`
+* **System dependencies** are fixed via Docker
+* The generated HTML report (`main.html`) is fully self-contained and suitable for sharing or archiving
+
+---
+
+## Contact
+
+Maintainer: **Lukáš Novák**
+📧 [lukas.jirinovak@gmail.com](mailto:lukas.jirinovak@gmail.com)
+

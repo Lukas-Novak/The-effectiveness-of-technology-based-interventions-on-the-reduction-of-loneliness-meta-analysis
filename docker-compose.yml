@@ -3,18 +3,29 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: ${IMAGE:-lukasjirinovak/universal_data_analysis:latest}
-    container_name: ${CONTAINER_NAME:-universal-data-analysis}
+    image: ${IMAGE:-lukasjirinovak/loneliness_interventions_meta_analysis:latest}
+    container_name: ${CONTAINER_NAME:-loneliness-meta-analysis}
     environment:
       DISABLE_AUTH: "true"
+      # Keep renv cache in a stable location (also mounted as a named volume below)
+      RENV_PATHS_CACHE: /home/rstudio/.cache/R/renv
     ports:
       - "${HOST_PORT:-8787}:8787"
     volumes:
-      - ./Projects:/home/rstudio/Projects
+      # Mount the whole repository into the container
+      - ./:/home/rstudio/project
+
+      # Persist renv package cache across container rebuilds/runs
+      - renv-cache:/home/rstudio/.cache/R/renv
+
       # Optional mounts: uncomment as needed
-      # - ./.git:/home/rstudio/.git
-      - ./.dockerignore:/home/rstudio/.dockerignore
-      - ./.Rprofile:/home/rstudio/.Rprofile
+      # - ./.git:/home/rstudio/project/.git
+      - ./.dockerignore:/home/rstudio/project/.dockerignore
+      - ./.Rprofile:/home/rstudio/project/.Rprofile
+    working_dir: /home/rstudio/project
     restart: "no"
     tty: true
     stdin_open: true
+
+volumes:
+  renv-cache:
