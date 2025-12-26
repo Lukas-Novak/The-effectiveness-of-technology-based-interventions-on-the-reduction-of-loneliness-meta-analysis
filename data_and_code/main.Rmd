@@ -2,7 +2,7 @@
 title: "Revised Meta-analysis of Technology-Based Interventions for Loneliness"
 author: "Jana Furstova & Lukas Novak"
 date: '2025-12-08'
-output: 
+output:
   html_document:
     toc: true
     toc_float: true
@@ -15,22 +15,23 @@ set.seed(48468) # for reproducibility
 ```
 
 ## 1. Setup and Libraries
-This chunk loads all necessary R packages for the analysis.
+This chunk loads all necessary R packages for the analysis. The `pimeta` package is used for calculating the robust prediction interval as requested by the reviewer.
 
 ```{r packages}
 library(tidyverse) # For data manipulation (dplyr, etc.)
 library(metafor)   # The core package for meta-analysis
+library(pimeta)    # For robust prediction intervals (Nagashima method)
 library(knitr)     # For report generation
 library(kableExtra)# For creating nice HTML tables
 ```
 
 ## 2. Load and Prepare Data
-Here, we load the raw data, merge the pre-post correlations, and apply the necessary study exclusions.
+Here, we load the raw data, merge the pre-post correlations, and apply the necessary study exclusions as described in the manuscript.
 
 ```{r load-data}
 # Load the two data files
-cor_dat <-  readxl::read_xlsx("~/Projects/loneliness-interventions-meta-analysis/Data/pre_post_correlations.xlsx")
-dat <- read.csv("~/Projects/loneliness-interventions-meta-analysis/Data/meta_data.csv")
+cor_dat <-  readxl::read_xlsx("~/data_and_code/loneliness-interventions-meta-analysis/Data/pre_post_correlations.xlsx")
+dat <- read.csv("~/data_and_code/loneliness-interventions-meta-analysis/Data/meta_data.csv")
 
 # This creates a 'Study_name' column in cor_dat that matches the format in the 'dat' file.
 cor_dat <- cor_dat %>%
@@ -49,31 +50,26 @@ cor_dat <- cor_dat %>%
   ))
 
 # Merge the two datasets using the new, standardized "Study_name" column
-# This is an "inner join" by default, so studies not present in BOTH files
-# (like Baez_2017, which is not in `dat`) are automatically dropped.
 analysis_data <- merge(
   dat,
   cor_dat,
-  by = "Study_name" 
+  by = "Study_name"
 )
 
-# --- Study Exclusions based on Manuscript Methods ---
-# Now we only need to explicitly exclude studies that successfully merged but are not eligible.
-# 1. Exclude Shapira_2007: Determined to be quasi-experimental.
-# 2. Exclude Sun_2023: This study was retracted.
+# Study Exclusions based on Manuscript Methods
+# Exclude studies that are not eligible for the final analysis.
 studies_to_exclude <- c("Shapira_2007", "Sun_2023")
 
-analysis_data <- analysis_data %>% 
+analysis_data <- analysis_data %>%
   filter(!Study_name %in% studies_to_exclude)
 
 # Display the final dataset for verification
-# This should correctly show a data frame with 7 rows.
 kable(analysis_data, caption = "Final Dataset for Meta-Analysis") %>%
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = F)
 ```
 
 ## 3. Calculate Between-Group Effect Sizes
-We calculate the effect size for each study. The chosen measure is `"SMCC"` (Standardized Mean Change using Change Score standardization), which is ideal for a pre-post design with a control group. We calculate it separately for the treatment and control groups and then compute the final difference.
+We calculate the effect size for each study. The chosen measure is `"SMCC"` (Standardized Mean Change using Change Score standardization), which is ideal for a pre-post design with a control group.
 
 ```{r calculate-effect-sizes}
 # Calculate within-group standardized mean change for the TREATMENT groups
@@ -110,7 +106,7 @@ analysis_data$slab <- analysis_data$Study_name
 ```
 
 ## 4. Perform Meta-Analysis
-We run the main random-effects model using the Hartung-Knapp-Sidik-Jonkman method.
+We run the main random-effects model using the `metafor` package. This model provides the pooled effect estimate and heterogeneity statistics (I², Q) used in the manuscript and forest plot.
 
 ```{r run-meta-analysis}
 # Run the robust random-effects model (REML + HKSJ)
@@ -131,7 +127,7 @@ summary(meta_model)
 ## 5. Generate Outputs for Manuscript
 
 ### 5.1. Data for Manuscript Table 2
-This chunk extracts the study-level results into a clean table, exactly as requested. This table provides the core quantitative results for each included study.
+This chunk extracts the study-level results into a clean table, exactly as needed for the manuscript. This table provides the core quantitative results for each included study.
 
 ```{r generate-table-2}
 # Create a summary data frame of the results
@@ -155,15 +151,25 @@ kable(table_2_data, row.names = FALSE, caption = "Study-Level Results for Manusc
 ```
 
 ### 5.2. Prediction Interval
-The prediction interval shows the expected range of true effects in future studies.
+The prediction interval shows the expected range of true effects in future studies. This has been updated to use the correct syntax for the `pima` function from the `pimeta` package. The method `"boot"` corresponds to the Nagashima et al. (2019) confidence distribution approach.
 
 ```{r prediction-interval}
-# Calculate and print the 95% prediction interval
-predict(meta_model, digits = 3)
+# Calculate and print the 95% prediction interval using the Nagashima et al. method.
+# The pima() function takes the effect sizes (y) and standard errors (se) as input.
+# The `method = "boot"` argument specifies the parametric bootstrap PI, which is the
+# confidence distribution approach from Nagashima et al. (2019).
+pi_model <- pima(
+  y = analysis_data$yi,
+  se = sqrt(analysis_data$vi),
+  method = "boot", # Explicitly specify the Nagashima et al. method
+)
+
+# Print the results, which include the CI and the PI
+print(pi_model)
 ```
 
 ### 5.3. Forest Plot
-This is the primary visualization of the meta-analysis results.
+This is the primary visualization of the meta-analysis results. The text annotation for the prediction interval has been updated to use the values from the correctly calculated `pi_model` object.
 
 ```{r forest-plot}
 # Create publication-ready labels for the plot
@@ -171,18 +177,16 @@ This is the primary visualization of the meta-analysis results.
 analysis_data$pretty_slab <- gsub("_", " (", analysis_data$slab)
 analysis_data$pretty_slab <- paste0(analysis_data$pretty_slab, ")")
 
-# Update the meta-analysis model to use the new labels
-# This ensures the new labels are carried through to the plot.
+# Update the meta-analysis model from metafor to use the new labels for the plot
 meta_model <- rma(
   yi, vi,
   data = analysis_data,
-  method = "REML", 
-  test = "knha",   
+  method = "REML",
+  test = "knha",
   slab = pretty_slab # Use the new, clean labels
 )
 
 # Create the plot
-# This opens the graphics device and draws the main forest plot.
 forest(meta_model,
        xlab = "Standardized Mean Difference (SMD)",
        showweights = TRUE,
@@ -193,26 +197,27 @@ forest(meta_model,
        digits = 2,
        addfit = TRUE, 
        addpred = TRUE,
-       annotate = TRUE)
+       annotate = TRUE,
+       ylim = c(-3.5, 10))
 
-# Add annotations to the plot
+# Add annotations
+# We move the text up slightly to ensure it's visible
 
-# Get the prediction interval values
-pred_results <- predict(meta_model)
-
-# Add text with heterogeneity statistics
-text(x = -4.7, y = - 1.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
+# Heterogeneity Statistics
+text(x = -4.7, y = -1.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
     .(round(meta_model$QE, 2)), ", df = ", .(meta_model$k - meta_model$p),
     ", p = ", .(round(meta_model$QEp, 3)), "; ", I^2, " = ",
     .(round(meta_model$I2, 1)), "%")))
 
-# Add text with the prediction interval
-text(x = -3, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
-    .(round(pred_results$pi.lb, 2)), ", ",
-    .(round(pred_results$pi.ub, 2)), "]")))
+# Prediction Interval (New values)
+text(x = -4.7, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
+    .(round(pi_model$lpi, 2)), ", ",
+    .(round(pi_model$upi, 2)), "]")))
+
 ```
 
 ### 5.4. Publication Bias Analysis
+This section remains unchanged and uses the `metafor` model for consistency in bias diagnostics.
 
 ```{r publication-bias}
 # 1. Funnel Plot
@@ -231,10 +236,13 @@ summary(trimfill_results)
 ```
 
 ### 5.5. Sensitivity Analysis (Leave-One-Out)
-This analysis recalculates the pooled effect by removing one study at a time to see if any single study disproportionately influences the overall result.
+This analysis recalculates the pooled effect by removing one study at a time to see if any single study disproportionately influences the overall result. This section also remains unchanged and uses the `metafor` model.
 
 ```{r sensitivity-analysis}
 # Perform and print the leave-one-out analysis
 leave1out_results <- leave1out(meta_model)
 print(leave1out_results)
 ```
+# References: 
+
+Nagashima, K., Noma, H., & Furukawa, T. A. (2019). Prediction intervals for random-effects meta-analysis: a confidence distribution approach. Statistical methods in medical research, 28(6), 1689-1702.
