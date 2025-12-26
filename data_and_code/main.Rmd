@@ -30,8 +30,8 @@ Here, we load the raw data, merge the pre-post correlations, and apply the neces
 
 ```{r load-data}
 # Load the two data files
-cor_dat <-  readxl::read_xlsx("~/data_and_code/loneliness-interventions-meta-analysis/Data/pre_post_correlations.xlsx")
-dat <- read.csv("~/data_and_code/loneliness-interventions-meta-analysis/Data/meta_data.csv")
+cor_dat <-  readxl::read_xlsx("Data/pre_post_correlations.xlsx")
+dat <- read.csv("Data/meta_data.csv")
 
 # This creates a 'Study_name' column in cor_dat that matches the format in the 'dat' file.
 cor_dat <- cor_dat %>%
