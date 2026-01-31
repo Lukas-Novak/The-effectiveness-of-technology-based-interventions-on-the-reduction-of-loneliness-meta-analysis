@@ -172,47 +172,96 @@ print(pi_model)
 This is the primary visualization of the meta-analysis results. The text annotation for the prediction interval has been updated to use the values from the correctly calculated `pi_model` object.
 
 ```{r forest-plot}
-# Create publication-ready labels for the plot
-# This replaces the underscore with a space and adds parentheses around the year.
-analysis_data$pretty_slab <- gsub("_", " (", analysis_data$slab)
-analysis_data$pretty_slab <- paste0(analysis_data$pretty_slab, ")")
+#========================
+# Forest plot to PDF & SVG
+# Adds N(Treatment), N(Control), Weight(%)
+#========================
 
-# Update the meta-analysis model from metafor to use the new labels for the plot
-meta_model <- rma(
-  yi, vi,
-  data = analysis_data,
-  method = "REML",
-  test = "knha",
-  slab = pretty_slab # Use the new, clean labels
+pdf("forest_plot_final.pdf", width = 11, height = 7.5)
+#svg("forest_plot_final.svg", width = 11, height = 7.5)
+
+k <- meta_model$k
+rows_studies <- k:1
+
+# -----------------------
+# Compute weights (%)
+# -----------------------
+w <- weights(meta_model)
+w_perc <- 100 * w / sum(w)
+
+# -----------------------
+# Build extra columns
+# -----------------------
+ilab_mat <- cbind(
+  as.integer(analysis_data$Treatment_Sample_Size),
+  as.integer(analysis_data$Control_sample_size),
+  sprintf("%.1f", w_perc)
 )
 
-# Create the plot
-forest(meta_model,
-       xlab = "Standardized Mean Difference (SMD)",
-       showweights = TRUE,
-       header = c("Author(s) and Year", "SMD [95% CI]"),
-       mlab = "REML Model (HKSJ)", 
-       cex = 0.9,
-       alim = c(-3, 3),
-       digits = 2,
-       addfit = TRUE, 
-       addpred = TRUE,
-       annotate = TRUE,
-       ylim = c(-3.5, 10))
+# -----------------------
+# Forest plot
+# -----------------------
+metafor::forest(
+  meta_model,
 
-# Add annotations
-# We move the text up slightly to ensure it's visible
+  # Labels
+  xlab   = "Standardized Mean Difference (SMD)",
+  header = c("Author(s) and Year", "SMD [95% CI]"),
+  mlab   = "REML Model (HKSJ)",
+  digits = 2,
+  cex    = 1.0,
 
-# Heterogeneity Statistics
-text(x = -4.7, y = -1.5, pos = 4, cex = 0.8, bquote(paste("Heterogeneity: Q = ",
-    .(round(meta_model$QE, 2)), ", df = ", .(meta_model$k - meta_model$p),
-    ", p = ", .(round(meta_model$QEp, 3)), "; ", I^2, " = ",
-    .(round(meta_model$I2, 1)), "%")))
+  # Layout: make room for 3 columns on the left
+  alim   = c(-3, 3),
+  xlim   = c(-10.5, 3),
+  rows   = rows_studies,
+  ylim   = c(-3.9, k + 3),
 
-# Prediction Interval (New values)
-text(x = -4.7, y = -2.5, pos = 4, cex = 0.8, bquote(paste("Prediction Interval: [",
-    .(round(pi_model$lpi, 2)), ", ",
-    .(round(pi_model$upi, 2)), "]")))
+  # Model overlays
+  annotate = TRUE,
+  addfit   = TRUE,
+  addpred  = TRUE,
+
+  # Extra columns
+  showweights = FALSE,
+  ilab        = ilab_mat,
+  ilab.xpos   = c(-7.5, -6.0, -4.5),  # <-- adjust if you want tighter/wider spacing
+  ilab.pos    = 4,
+  ilab.lab    = c("N (Treatment)", "N (Control)", "Weight (%)")
+)
+
+
+# -----------------------
+# Extra annotations below the plot
+# -----------------------
+par(xpd = NA)
+usr <- par("usr")
+x_left <- usr[1]
+
+# Heterogeneity
+text(
+  x = x_left, y = -1.7, pos = 4, cex = 0.9,
+  bquote(paste(
+    "Heterogeneity: Q = ", .(round(meta_model$QE, 2)),
+    ", df = ", .(meta_model$k - meta_model$p),
+    ", p = ", .(format.pval(meta_model$QEp, digits = 2, eps = 0.001)),
+    "; ", I^2, " = ", .(round(meta_model$I2, 1)), "%"
+  ))
+)
+
+# Robust prediction interval (Nagashima)
+lpi <- if (!is.null(pi_model$lpi)) pi_model$lpi else pi_model$pi.lb
+upi <- if (!is.null(pi_model$upi)) pi_model$upi else pi_model$pi.ub
+
+text(
+  x = x_left, y = -2.9, pos = 4, cex = 0.9,
+  bquote(paste(
+    "Prediction interval (Nagashima): [",
+    .(round(lpi, 2)), ", ", .(round(upi, 2)), "]"
+  ))
+)
+
+dev.off()
 
 ```
 
