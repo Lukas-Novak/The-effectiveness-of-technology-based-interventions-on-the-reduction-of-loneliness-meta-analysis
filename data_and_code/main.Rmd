@@ -172,92 +172,85 @@ print(pi_model)
 This is the primary visualization of the meta-analysis results. The text annotation for the prediction interval has been updated to use the values from the correctly calculated `pi_model` object.
 
 ```{r forest-plot}
-#========================
 # Forest plot to PDF & SVG
 # Adds N(Treatment), N(Control), Weight(%)
-#========================
+# Now includes visual prediction interval diamond (Nagashima method)
 
-pdf("forest_plot_final.pdf", width = 11, height = 7.5)
-#svg("forest_plot_final.svg", width = 11, height = 7.5)
+# pdf("forest_plot_final.pdf", width = 11, height = 7.5)
+svg("forest_plot_final.svg", width = 11, height = 7.5)
 
 k <- meta_model$k
 rows_studies <- k:1
 
-# -----------------------
 # Compute weights (%)
-# -----------------------
 w <- weights(meta_model)
 w_perc <- 100 * w / sum(w)
 
-# -----------------------
 # Build extra columns
-# -----------------------
 ilab_mat <- cbind(
-  as.integer(analysis_data$Treatment_Sample_Size),
-  as.integer(analysis_data$Control_sample_size),
-  sprintf("%.1f", w_perc)
+    as.integer(analysis_data$Treatment_Sample_Size),
+    as.integer(analysis_data$Control_sample_size),
+    sprintf("%.1f", w_perc)
 )
 
-# -----------------------
+# Extract prediction interval values from pimeta
+lpi <- if (!is.null(pi_model$lpi)) pi_model$lpi else pi_model$pi.lb
+upi <- if (!is.null(pi_model$upi)) pi_model$upi else pi_model$pi.ub
+
 # Forest plot
-# -----------------------
 metafor::forest(
-  meta_model,
-
-  # Labels
-  xlab   = "Standardized Mean Difference (SMD)",
-  header = c("Author(s) and Year", "SMD [95% CI]"),
-  mlab   = "REML Model (HKSJ)",
-  digits = 2,
-  cex    = 1.0,
-
-  # Layout: make room for 3 columns on the left
-  alim   = c(-3, 3),
-  xlim   = c(-10.5, 3),
-  rows   = rows_studies,
-  ylim   = c(-3.9, k + 3),
-
-  # Model overlays
-  annotate = TRUE,
-  addfit   = TRUE,
-  addpred  = TRUE,
-
-  # Extra columns
-  showweights = FALSE,
-  ilab        = ilab_mat,
-  ilab.xpos   = c(-7.5, -6.0, -4.5),  # <-- adjust if you want tighter/wider spacing
-  ilab.pos    = 4,
-  ilab.lab    = c("N (Treatment)", "N (Control)", "Weight (%)")
+    meta_model,
+    
+    # Labels
+    xlab   = "Standardized Mean Difference (SMD)",
+    header = c("Author(s) and Year", "SMD [95% CI]"),
+    mlab   = "REML Model (HKSJ)",
+    digits = 2,
+    cex    = 1.0,
+    
+    # Layout: make room for 3 columns on the left
+    alim   = c(-3, 3),
+    xlim   = c(-10.5, 3),
+    rows   = rows_studies,
+    ylim   = c(-3.9, k + 3),
+    
+    # Model overlays
+    annotate = TRUE,
+    addfit   = TRUE,
+    addpred  = FALSE,  
+    
+    # Extra columns
+    showweights = FALSE,
+    ilab        = ilab_mat,
+    ilab.xpos   = c(-7.5, -6.0, -4.5),
+    ilab.pos    = 4,
+    ilab.lab    = c("N (Treatment)", "N (Control)", "Weight (%)")
 )
 
+# Manually add prediction interval diamond (Nagashima method)
+# This draws the diamond below the pooled effect diamond
+addpoly(x = (lpi + upi)/2,  # Center of the prediction interval
+        ci.lb = lpi,         # Lower bound from pimeta
+        ci.ub = upi,         # Upper bound from pimeta
+        rows = -1.5,         # Changed from -1 to -1.5 for more spacing
+        col = "lightgray",   # Fill color
+        border = "darkgray", # Border color
+        mlab = "Prediction Interval (Nagashima)",  # Label
+        cex = 0.9)
 
-# -----------------------
 # Extra annotations below the plot
-# -----------------------
 par(xpd = NA)
 usr <- par("usr")
 x_left <- usr[1]
 
 # Heterogeneity
 text(
-  x = x_left, y = -1.7, pos = 4, cex = 0.9,
+  x = x_left, y = -2.5, pos = 4, cex = 0.9,  # Changed from -1.7 to -2.5
   bquote(paste(
     "Heterogeneity: Q = ", .(round(meta_model$QE, 2)),
     ", df = ", .(meta_model$k - meta_model$p),
     ", p = ", .(format.pval(meta_model$QEp, digits = 2, eps = 0.001)),
     "; ", I^2, " = ", .(round(meta_model$I2, 1)), "%"
-  ))
-)
-
-# Robust prediction interval (Nagashima)
-lpi <- if (!is.null(pi_model$lpi)) pi_model$lpi else pi_model$pi.lb
-upi <- if (!is.null(pi_model$upi)) pi_model$upi else pi_model$pi.ub
-
-text(
-  x = x_left, y = -2.9, pos = 4, cex = 0.9,
-  bquote(paste(
-    "Prediction interval (Nagashima): [",
-    .(round(lpi, 2)), ", ", .(round(upi, 2)), "]"
   ))
 )
 
