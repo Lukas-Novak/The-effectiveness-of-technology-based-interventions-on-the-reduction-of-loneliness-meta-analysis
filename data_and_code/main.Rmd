@@ -135,14 +135,15 @@ results_table <- summary(meta_model, digits=3)
 
 # Extract the individual study data into a clean table
 table_2_data <- data.frame(
-    Study = meta_model$slab,
-    SMD = round(meta_model$yi, 3),
-    Std_Error = round(sqrt(meta_model$vi), 3),
-    Variance = round(meta_model$vi, 3),
-    CI_lower = round(results_table$ci.lb, 3),
-    CI_upper = round(results_table$ci.ub, 3),
-    Z_value = round(meta_model$yi / sqrt(meta_model$vi), 3),
-    P_value = round(2 * pnorm(abs(meta_model$yi / sqrt(meta_model$vi)), lower.tail = FALSE), 3)
+    Study      = meta_model$slab,
+    SMD        = round(meta_model$yi, 3),
+    Std_Error  = round(sqrt(meta_model$vi), 3),
+    Variance   = round(meta_model$vi, 3),
+    CI_lower   = round(meta_model$yi - qnorm(0.975) * sqrt(meta_model$vi), 3),  
+    CI_upper   = round(meta_model$yi + qnorm(0.975) * sqrt(meta_model$vi), 3),  
+    Z_value    = round(meta_model$yi / sqrt(meta_model$vi), 3),
+    P_value    = round(2 * pnorm(abs(meta_model$yi / sqrt(meta_model$vi)),
+                                 lower.tail = FALSE), 3)
 )
 
 # Print the table in a clean format
